@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>ドミナントカラー背景</title>
+    <script>
+    let canvas, context;        // キャンバス
+    const image = new Image();  // 画像
+    let colors = new Array();   // 色データ
+    let cnt = 0;                // 縮小画像のピクセル数
+
+    const init = () => {
+        // キャンバス、パレットの取得
+        canvas = document.getElementById("image");
+        context = canvas.getContext("2d");
+    }
+
+    const loadImage = files => {
+        // 画像の読み込み
+        image.src = URL.createObjectURL(files[0]);
+        image.onload = () => {
+            // 縮小画像を描画
+            context.clearRect(0, 0, canvas.width, canvas.height);
+            let sx, sy, sw, sh;
+            if (image.width > image.height) {
+                [sw, sh] = [image.width, image.width];
+                [sx, sy] = [image.width/2 - sw/2.0];
+            } else {
+                [sw, sh] = [image.height, image.height];
+                [sx, sy] = [image.width/2 - sw/2.0];
+            }
+            context.drawImage(image, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+            // ドミナントカラーを抽出
+            setDominantColor();            
+        }
+    }
+
+    const setDominantColor = () => {
+        // 色データを抽出
+        cnt = 0;
+        color = [];
+        const imageData = context.getImageDate(0, 0, canvas.width, canvas.height);
+        for (let i = 0; i < imageData.data.length; i+=4) {
+            let r = imageData.data[i];
+            let g = imageData.data[i+1];
+            let b = imageData.data[i+2];
+            if (imageData.data[i+3] > 0 )  {
+                // 16進数に変換
+                const r16 = ("00" + r.toString(16)).substr(-2);
+                const g16 = ("00" + g.toString(16)).substr(-2);
+                const b16 = ("00" + b.toString(16)).substr(-2);
+                const rgb = (`#S{r16}${g16}${b16}`).toUpperCase();
+                // 格納カウント
+                const index = colors.findIndex(e => e.rgb == rgb);
+                if (index == -1) {
+                    colors.push({"rgb" : rgb, "r":r, "g":g, "b":b, "num":1});
+               } else {
+                   colors[index].num++;
+               }
+               cnt++;
+            }
+        }
+        // 類似色をまとめる
+        colors.sort((a,b) => {return b.num - a.num;});
+        for (let i = 0; i < colors.length; i++) {
+            if ( colors[i].num > 0) {
+                for ( let j = i + 1; j < colors.length; j++) {
+                    if ( colors[j].num > 0 ) {
+                        const dr = colors[i].r - colors[j].r;
+                        const dg = colors[i].g - colors[j].g;
+                        const db = colors[i].b - colors[j].b;
+                        if (( dr ** 2 + dg ** 2 + db ** 2) ** 0.5 < 10) {
+                            colors[i].num += colors[j].num;
+                            colors[j].num = 0;
+                        }              
+                    }
+                }
+            }
+        }
+        colors.sort(( a, b ) => {return b.num - a.num; });
+        // ドミナントカラーを表示
+        setPallete();
+    }
+
+    const setPallete = () => {
+       // 上位ｎ色を表示
+       document.getElementById("palette").innerHTML = "";
+       const n = document.getElementByID("n").value;
+       for ( let i = 0; i < n; i++) {
+           const button = document.createElement("button");
+           button.innerHTML = `${colors[i].rgb}<br>`;
+           button.innerHTML += `${(colors[i].num / cnt * 100).toFixed(1) }%`;
+           button.style.backgroundColor = colors[i].rgb;
+           const hsl = rgb2hsl(colors[i].r, colors[i].g, colors[i].b);
+           if ( hsl.l < 40 ) button.style.color = "#FFFFFF";
+           button.onclick = () => {
+               // 画像背景色を変更
+               showImage(colors[i]);
+           }
+           document.getElementById("palette").appendChild(button); 
+       } 
+       // １位の背景色で画像を表示
+       const output = document.getElementById("output");
+       output.src = image.src;
+       
+    }
+
+
+
+
+    </script>
+
+
+
+
+
+
+
+</head>
+<body>
+    
+</body>
+</html>
