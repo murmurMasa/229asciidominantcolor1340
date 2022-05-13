@@ -1,46 +1,46 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <title>ドミナントカラー背景</title>
-    <script>
-    let canvas, context;        // キャンバス
-    const image = new Image();  // 画像
-    let colors = new Array();   // 色データ
-    let cnt = 0;                // 縮小画像のピクセル数
+<meta charset="UTF-8">
+<title>ドミナントカラー背景</title>
+<script>
+let canvas, context;        // キャンバス
+const image = new Image();  // 画像
+let colors = new Array();   // 色データ
+let cnt = 0;                // 縮小画像のピクセル数
 
-    const init = () => {
-        // キャンバス、パレットの取得
-        canvas = document.getElementById("image");
-        context = canvas.getContext("2d");
-    }
+const init = () => {
+    // キャンバス、パレットの取得
+    canvas = document.getElementById("image");
+    context = canvas.getContext("2d");
+}
 
-    const loadImage = files => {
-        // 画像の読み込み
-        image.src = URL.createObjectURL(files[0]);
-        image.onload = () => {
-            // 縮小画像を描画
-            context.clearRect(0, 0, canvas.width, canvas.height);
-            let sx, sy, sw, sh;
-            if (image.width > image.height) {
-                [sw, sh] = [image.width, image.width];
-                [sx, sy] = [image.width/2 - sw/2.0];
-            } else {
-                [sw, sh] = [image.height, image.height];
-                [sx, sy] = [image.width/2 - sw/2.0];
-            }
-            context.drawImage(image, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
-            // ドミナントカラーを抽出
-            setDominantColor();            
+const loadImage = files => {
+    // 画像の読み込み
+    image.src = URL.createObjectURL(files[0]);
+    image.onload = () => {
+        // 縮小画像を描画
+        context.clearRect(0, 0, canvas.width, canvas.height);
+        let sx, sy, sw, sh;
+        if (image.width > image.height) {
+            [sw, sh] = [image.width, image.width];
+            [sx, sy] = [0, image.height/2 - sh/2];
+        } else {
+            [sw, sh] = [image.height, image.height];
+            [sx, sy] = [image.width/2 - sw/2, 0];
         }
+        context.drawImage(image, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+        // ドミナントカラーを抽出
+        setDominantColor();            
     }
+}
 
     const setDominantColor = () => {
         // 色データを抽出
         cnt = 0;
-        color = [];
+        colors = [];
         const imageData = context.getImageDate(0, 0, canvas.width, canvas.height);
-        for (let i = 0; i < imageData.data.length; i+=4) {
+        for (let i=0; i<imageData.data.length; i+=4) {
             let r = imageData.data[i];
             let g = imageData.data[i+1];
             let b = imageData.data[i+2];
@@ -49,11 +49,11 @@
                 const r16 = ("00" + r.toString(16)).substr(-2);
                 const g16 = ("00" + g.toString(16)).substr(-2);
                 const b16 = ("00" + b.toString(16)).substr(-2);
-                const rgb = (`#S{r16}${g16}${b16}`).toUpperCase();
-                // 格納カウント
+                const rgb = (`#${r16}${g16}${b16}`).toUpperCase();
+                // 格納/カウント
                 const index = colors.findIndex(e => e.rgb == rgb);
                 if (index == -1) {
-                    colors.push({"rgb" : rgb, "r":r, "g":g, "b":b, "num":1});
+                    colors.push({"rgb":rgb, "r":r, "g":g, "b":b, "num":1});
                } else {
                    colors[index].num++;
                }
@@ -62,14 +62,14 @@
         }
         // 類似色をまとめる
         colors.sort((a,b) => {return b.num - a.num;});
-        for (let i = 0; i < colors.length; i++) {
+        for (let i=0; i<colors.length; i++) {
             if ( colors[i].num > 0) {
-                for ( let j = i + 1; j < colors.length; j++) {
+                for ( let j=i+1; j<colors.length; j++) {
                     if ( colors[j].num > 0 ) {
                         const dr = colors[i].r - colors[j].r;
                         const dg = colors[i].g - colors[j].g;
                         const db = colors[i].b - colors[j].b;
-                        if (( dr ** 2 + dg ** 2 + db ** 2) ** 0.5 < 10) {
+                        if (( dr**2+dg**2+db**2)**0.5 < 10) {
                             colors[i].num += colors[j].num;
                             colors[j].num = 0;
                         }              
@@ -77,47 +77,107 @@
                 }
             }
         }
-        colors.sort(( a, b ) => {return b.num - a.num; });
+        colors.sort(( a, b ) => {return b.num - a.num;});
         // ドミナントカラーを表示
         setPallete();
     }
 
-    const setPallete = () => {
+    const setPalette = () => {
        // 上位ｎ色を表示
        document.getElementById("palette").innerHTML = "";
-       const n = document.getElementByID("n").value;
+       const n = document.getElementById("n").value;
        for ( let i = 0; i < n; i++) {
            const button = document.createElement("button");
            button.innerHTML = `${colors[i].rgb}<br>`;
-           button.innerHTML += `${(colors[i].num / cnt * 100).toFixed(1) }%`;
+           button.innerHTML += `${(colors[i].num / cnt * 100).toFixed(1)}%`;
            button.style.backgroundColor = colors[i].rgb;
            const hsl = rgb2hsl(colors[i].r, colors[i].g, colors[i].b);
-           if ( hsl.l < 40 ) button.style.color = "#FFFFFF";
+           if (hsl.l<40) button.style.color="#FFFFFF";
            button.onclick = () => {
                // 画像背景色を変更
                showImage(colors[i]);
            }
-           document.getElementById("palette").appendChild(button); 
+           document.getElementById("palette").appendChild(button); //パレットエリアにボタンを追加
        } 
        // １位の背景色で画像を表示
-       const output = document.getElementById("output");
-       output.src = image.src;
-       
+       showImage(colors[0]);
+}
+
+const showImage = (color) => {
+    //画像を表示
+    const output = document.getElementById("output");   //画像に読み込んだ画像をセット
+    output.src = image.src;
+    if(image.width >= image.height) {                           //縦か横の大きい方を400ピクセルにする
+        output.width = 400;
+        output.height = image.height/image.width*output.width;
+    } else if (image.width < image.height) {
+        output.height = 400;
+        output.width = image.width/image.height*output.height;
     }
+    document.getElementById("back").style.backgroundColor = color.rgb;  //背景色を選択した色に
+    //色情報（16進数、rgb、hsl）を表示
+    const hsl = rgb2hsl(color.r, color.g, color.b);
+    let data = color.rgb;                                       //色データに16進数、RGB、HSLで色を表示
+    data += `<br>rgb(${color.r}, ${color.g}, ${color.b})`;
+    data += `<br>hsl(${hsl.h}, ${hsl.s}%, ${hsl.l}%)`;
+    document.getElementById("colorData").innerHTML = data;
+    let fontColor = "#000000";                                  //文字の色は背景色の明度が40未満のときは城、40以上の時は黒
+    if (hsl.l < 40) fontColor = "#FFFFFF";
+    document.getElementById("colorData").style.color = fontColor;
+}
 
-
-
-
-    </script>
-
-
-
-
-
-
-
+const rgb2hsl = (r,g,b) => {
+    //RGB → HSL変換
+    const max = Math.max(r,g,b);   //ＲＧＢの中で最大値と最小値を求める
+    const min = Math.min(r,g,b);
+    let [h, d] = [0, max-min];
+    if (d > 0) {                    //最大値と最小値が同じでないなら
+       if(max == r) h = Math.floor(60 * (g-b) / d);     //色相（Ｈ）を計算する
+       if(max == g) h = Math.floor(60 * (b-r) / d) + 120;
+       if(max == b) h = Math.floor(60 * (r-g) / d) + 240;
+       if(h < 0) h += 360;
+    }
+    let s = Math.floor(d / (max+min) * 100);                            //彩度Ｓを計算する      
+    if (max+min > 255) s = Math.floor(d / (2*255 - (max+min)) * 100);
+    if (d == 0) s = 0;
+    let l = Math.floor(((max+min) / 255) / 2 * 100);        //明度Ｌを計算する
+    return {"h":h, "s":s, "l":l};
+}    
+</script>
+<style>
+canvas {
+    float: left;
+    margin: 0px 10px 10px 0px;
+    border: thin solid #000000;
+}
+input[type="number"] {width: 30px;}
+button {
+    width: 80px;
+    height: 80px;
+}
+hr {clear: both;}
+#back {
+    width: 640px;
+    height: 400px;
+    padding: 40px;
+}
+img {
+    float: left;
+    margin-right: 40px;
+}
+</style>
 </head>
-<body>
-    
+<body onload="init()">
+<p>ドミナントカラー背景</p>
+<input type="file" accept="image/*" oncahnge="loadImage(this.files)">
+<hr>
+<canvas id="image" width="100" height="100"></canvas>
+上位<input type="number" id="n" value="5" min="1" onchange="setPalette()">色：
+<div id="palette"></div>
+<hr>
+<div id="back">
+<img id="output">
+<div id="colorData"></div>
+</div>
 </body>
 </html>
